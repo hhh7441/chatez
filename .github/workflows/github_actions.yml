@@ -2,7 +2,7 @@
 name: CI/CD using Github Actions & AWS CodeDeploy
 
 # event trigger
-# main이나 develop 브랜치에 push가 되었을 때 실행
+# main이나 master 브랜치에 push가 되었을 때 실행
 on:
   push:
     branches: [ "master", "develop" ]
