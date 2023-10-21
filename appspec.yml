@@ -1,10 +1,15 @@
+# appspec.yml 파일의 버전을 정의
 version: 0.0
+
+# 배포 대상 인스턴스의 운영 체제
 os: linux
 
+# 소스 위치에서 대상 위치로 파일이나 디렉터리를 복사하는 방법을 정의
 files:
   - source: /
-    destination: /home/ubuntu/app # 인스턴스에서 파일이 저장될 위치
+    destination: /home/ubuntu/app
 
+# 배포의 각 단계에서 실행할 스크립트와 명령을 정의하는 섹션
 hooks:
   AfterInstall:
     - location: scripts/deploy.sh
