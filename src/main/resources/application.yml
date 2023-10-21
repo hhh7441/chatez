@@ -1,15 +1,10 @@
-server:
-  port: 8888  # 웹 서버의 포트 설정 123
-  servlet:
-    context-path: /chatez  # 컨텍스트 패스 설정
-
 # Database Configuration
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/chatez?serverTimezone=Asia/Seoul
-    username: root
-    password: mysql
+    url: jdbc:mysql://ls-0b9a6149e457b534c627b7068f91d8f91e9e8141.cordd8kaddx0.ap-northeast-2.rds.amazonaws.com:3306/chatez
+    username: dbmasteruser
+    password: chatez-1234
 
   # JPA Configuration
   jpa:

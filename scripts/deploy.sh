@@ -17,9 +17,6 @@ else
 fi
 
 echo "> $WAR_PATH 배포"
-# WAR 파일을 Tomcat의 webapps 디렉터리로 이동
-sudo systemctl stop tomcat
-sudo rm -rf /opt/tomcat/tomcat-10/webapps/chatez
-sudo rm -rf /opt/tomcat/tomcat-10/webapps/chatez.war
-sudo mv $WAR_PATH /opt/tomcat/tomcat-10/webapps/chatez.war
-sudo systemctl start tomcat
+nohup java -jar \
+        -Dspring.profiles.active=dev \
+        build/libs/$WAR_NAME > $REPOSITORY/nohup.out 2>&1 &
