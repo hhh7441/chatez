@@ -52,7 +52,7 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build -x test
 
-      # make zip file
+      # zip file 만들기
       - name: Make zip file
         run: zip -qq -r ./$GITHUB_SHA.zip .
         shell: bash
