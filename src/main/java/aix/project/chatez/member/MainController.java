@@ -52,7 +52,8 @@ public class MainController {
         String url = chatEzService.handleDeleteService(serviceNo);
         return "redirect:"+url;
     }
-
+    
+    //파일관리 화면
     @GetMapping("/file_manager")
     public String file_manager(){
         return "service/file_manager";
