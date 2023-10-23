@@ -45,7 +45,8 @@ public class MainController {
 
         return "redirect:"+url;
     }
-
+    
+    //생성형AI 삭제
     @ResponseBody
     @PostMapping("/delete")
     public String delete_service(@RequestParam("serviceNo") String serviceNo) {
