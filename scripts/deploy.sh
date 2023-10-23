@@ -22,6 +22,6 @@ else
   sleep 5
 fi
 
-# 새 WAR 파일 배포
+# 새 WAR 파일 배포 및 실행
 echo "> $WAR_PATH 배포"
   build/libs/$WAR_NAME > $REPOSITORY/nohup.out 2>&1 &

@@ -26,7 +26,7 @@ spring:
   thymeleaf:
     cache: false
 
-  open-search:
-    hostname: search-chatez-domain-3gyvfxsvei5ggu4oexqspqeqiu.ap-northeast-2.es.amazonaws.com
-    username: chatez-master
-    password: ChatEZ-Master1
+open-search:
+  hostname: search-chatez-domain-3gyvfxsvei5ggu4oexqspqeqiu.ap-northeast-2.es.amazonaws.com
+  username: chatez-master
+  password: ChatEZ-Master1

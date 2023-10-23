@@ -1,4 +1,6 @@
 package aix.project.chatez.member;
+
+import jakarta.annotation.PostConstruct;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -6,22 +8,32 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestHighLevelClient;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
+@Component
 public class OpenSearchClient {
-//    @Value("${open-search.hostname}")
-//    private static String hostnameInstance;
-//
-//    @Value("${open-search.username}")
-//    private static String usernameInstance;
-//
-//    @Value("${open-search.password}")
-//    private static String passwordInstance;
 
-    private static final String HOSTNAME = "132";
+    @Value("${open-search.hostname}")
+    private String hostnameInstance;
+
+    @Value("${open-search.username}")
+    private String usernameInstance;
+
+    @Value("${open-search.password}")
+    private String passwordInstance;
+
+    private static String HOSTNAME;
     private static final int PORT = 443;
     private static final String SCHEME = "https";
-    private static final String USERNAME =1321;
-    private static final String PASSWORD;
+    private static String USERNAME;
+    private static String PASSWORD;
+
+    @PostConstruct
+    public void init() {
+        HOSTNAME = hostnameInstance;
+        USERNAME = usernameInstance;
+        PASSWORD = passwordInstance;
+    }
 
     public static RestHighLevelClient createClient() {
 
