@@ -24,4 +24,4 @@ fi
 
 # 새 WAR 파일 배포 및 실행
 echo "> $WAR_PATH 배포"
-nohup java -jar $WAR_PATH 2>&1 &
+  build/libs/$JAR_NAME > $REPOSITORY/nohup.out 2>&1 &
