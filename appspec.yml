@@ -9,7 +9,7 @@ files:
   - source: /
     destination: /home/ubuntu/app
 
-# 배포의 각 단계에서 실행할 스크립트와 명령을 정의하는 섹션
+# 배포의 각 단계에서 실행할 스크립트와 명령을 정의
 hooks:
   AfterInstall:
     - location: scripts/deploy.sh
