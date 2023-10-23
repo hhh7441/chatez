@@ -20,7 +20,7 @@ public class OpenSearchClient {
     private static final String HOSTNAME = "132";
     private static final int PORT = 443;
     private static final String SCHEME = "https";
-    private static final String USERNAME;
+    private static final String USERNAME =1321;
     private static final String PASSWORD;
 
     public static RestHighLevelClient createClient() {
