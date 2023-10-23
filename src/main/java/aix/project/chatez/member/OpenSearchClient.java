@@ -17,7 +17,7 @@ public class OpenSearchClient {
 //    @Value("${open-search.password}")
 //    private static String passwordInstance;
 
-    private static final String HOSTNAME;
+    private static final String HOSTNAME = "132";
     private static final int PORT = 443;
     private static final String SCHEME = "https";
     private static final String USERNAME;
