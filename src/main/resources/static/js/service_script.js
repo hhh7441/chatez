@@ -5,6 +5,27 @@ function closeAllPanels() {
     });
 }
 
+function showFilesForService(button) {
+    var serviceName = button.getAttribute('data-service-name');
+    console.log(serviceName);
+
+    var serviceElements = document.querySelectorAll('#file_index');
+    serviceElements.forEach(function(element) {
+        if (element.getAttribute('data-service-name') === serviceName) {
+            element.style.display = 'block';
+        } else {
+            element.style.display = 'none';
+        }
+    });
+
+    var buttons = document.querySelectorAll('.chatez_get_file');
+    buttons.forEach(function(btn) {
+        btn.classList.remove('clicked');
+    });
+
+    button.classList.add('clicked');
+}
+
 document.getElementById("showPanel").addEventListener("click", function() {
     closeAllPanels();
     var newScreen = document.getElementById("newScreen");

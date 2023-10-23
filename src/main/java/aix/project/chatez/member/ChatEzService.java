@@ -1,5 +1,11 @@
 package aix.project.chatez.member;
 
+import org.opensearch.action.search.SearchRequest;
+import org.opensearch.action.search.SearchResponse;
+import org.opensearch.client.RequestOptions;
+import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.search.SearchHit;
+import org.opensearch.search.builder.SearchSourceBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.ui.Model;
@@ -10,8 +16,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class ChatEzService {
@@ -149,6 +154,61 @@ public class ChatEzService {
         } catch (Exception e) {
             e.printStackTrace();
             return "my_service";
+        }
+    }
+
+    public void awsFileData(Model model) {
+        RestHighLevelClient client = OpenSearchClient.createClient();
+        List<Member> loginUser = this.memberRepository.findAll();
+
+        if(loginUser.get(0) != null) {
+            String name = loginUser.get(0).getName();
+
+            Member member = memberRepository.findByName(name);
+            Long memberNo = null;
+            if (member != null) {
+                memberNo = member.getMemberNo();
+                System.out.println("id : hhh7441 no : " + memberNo);
+            } else {
+                System.out.println("hhh7441 회원의 번호를 찾을 수 없습니다.");
+            }
+
+            List<MyService> myServices = myServiceRepository.findByMemberMemberNo(memberNo);
+            Map<String, List<Map<String, Object>>> servicesFilesMap = new HashMap<>(); // 각 서비스 이름에 따른 파일 정보를 저장할 맵
+
+            for (MyService myService : myServices) {
+                List<Map<String, Object>> files = new ArrayList<>();
+                System.out.println("name : " + myService.getServiceName());
+                try {
+                    SearchRequest searchRequest = new SearchRequest(myService.getServiceName()); // 서비스 이름을 인덱스로 사용
+                    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+                    // Only fetch the "size", "name", and "contentType" fields
+                    String[] includeFields = new String[]{"size", "name", "contentType", "uploadTime"};
+                    String[] excludeFields = new String[]{};
+                    searchSourceBuilder.fetchSource(includeFields, excludeFields);
+
+                    searchRequest.source(searchSourceBuilder);
+
+                    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+
+                    for (SearchHit hit : searchResponse.getHits().getHits()) {
+                        Map<String, Object> source = hit.getSourceAsMap();
+                        files.add(source);  // 각 hit의 정보를 리스트에 추가합니다.
+                        System.out.println(source);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                servicesFilesMap.put(myService.getServiceName(), files);
+            }
+
+            try {
+                client.close();  // 모든 요청이 끝난 후 클라이언트를 닫습니다.
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            model.addAttribute("servicesFiles", servicesFilesMap);  // 서비스 이름에 따른 파일 정보 맵을 Model에 추가합니다.
         }
     }
 }

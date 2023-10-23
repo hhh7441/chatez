@@ -161,12 +161,23 @@
     margin-top: 20px;
 }
 
-.chat_list ul li{
+.chatez_get_file {
+    width: 310px;
     height: 80px;
     border-radius: 20px;
-    background-color: #ddd;
     font-size: 22px;
     padding: 10px;
+    background-color: #fff;
+    margin-bottom:10px;
+    text-align:left;
+}
+
+.chatez_get_file:hover{
+    background-color: #ddd;
+}
+
+.clicked {
+    background-color: #ddd;
 }
 
 .chat_list ul li img{
@@ -182,6 +193,10 @@
 .file_manager h3 img {
     margin-right: 20px;
     vertical-align: middle;
+}
+
+.clicked {
+    background-color: #ddd;
 }
 
 .file_manager{
@@ -207,10 +222,11 @@
     height: 44px;
 }
 
-#file_index{
+#file_index ul{
     height: 70px;
     border-radius: 20px;
     background-color: #ddd;
+    margin-bottom:10px;
 }
 
 #file_title ul li{
@@ -221,11 +237,11 @@
 }
 
 #file_title ul li:nth-child(2){
-    width: 520px;
+    width: 46.5%;
 }
 
 #file_title ul li:nth-child(n+3):nth-child(-n+5){
-    width: 150px;
+    width: 15%;
 }
 
 #file_index ul li{
@@ -240,12 +256,12 @@
 
 #file_index ul li:nth-child(2){
     margin-left: 20px;
-    width: 500px;
+    width: 45%;
 }
 
 #file_index ul li:nth-child(n+3):nth-child(-n+5){
     text-align: center;
-    width: 150px;
+     width: 15%;
 }
 
 .layout {
@@ -269,7 +285,7 @@
 }
 
 #newScreen.panel {
-    top:180px;
+    bottom:180px;
     position: fixed;
     right: -160%;
     width: 800px;
@@ -416,7 +432,7 @@
 }
 
 .updateScreen.panel {
-    top:180px;
+    bottom: 60px;
     position: fixed;
     right: -100%;
     width: 380px;
@@ -459,7 +475,7 @@
 }
 
 .chatScreen {
-    top:180px;
+    bottom:60px;
     position: fixed;
     right: -100%;
     width: 380px;

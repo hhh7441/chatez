@@ -55,7 +55,9 @@ public class MainController {
     
     //파일관리 화면
     @GetMapping("/file_manager")
-    public String file_manager(){
+    public String file_manager(Model model) {
+        chatEzService.userServiceDate(model);
+        chatEzService.awsFileData(model);
         return "service/file_manager";
     }
 
