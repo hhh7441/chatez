@@ -60,7 +60,7 @@ jobs:
         shell: bash
 
       # AWS credentials을 설정하여 AWS 서비스에 액세스
-      - name: AWS credentials 설정
+      - name: AWS credentials 액세스
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}

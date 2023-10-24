@@ -20,6 +20,9 @@ public class MyService { //로그확인
     @Column(name = "profile_pic", nullable = false)
     private String profilePic;
 
+    @Column(name = "service_id", nullable = false)
+    private String serviceId;
+
     @ManyToOne
     @JoinColumn(name = "member_no")
     private Member member;

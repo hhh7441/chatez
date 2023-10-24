@@ -189,6 +189,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 document.addEventListener('DOMContentLoaded', function () {
+    var messageHistory = [];
     var chatAreas = document.querySelectorAll('.chatEZ_list .chatScreen');
 
     chatAreas.forEach(function(chatArea) {
@@ -216,6 +217,10 @@ document.addEventListener('DOMContentLoaded', function () {
     function addMessageToChat(textarea, chatContent, chat) {
         var message = textarea.value.trim();
         if (message) {
+        messageHistory.push(message);
+        while (messageHistory.length > 5) {
+            messageHistory.shift();  // 배열의 첫 번째 요소 제거
+        }
         textarea.disabled = true; // textarea를 비활성화
         textarea.placeholder = "답변을 기다리는 중...";
         fetch('http://localhost:8000/handle_query', {
@@ -223,7 +228,7 @@ document.addEventListener('DOMContentLoaded', function () {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({query: message}) // 쿼리를 JSON 형식으로 변환
+            body: JSON.stringify({query: message, history: messageHistory}) // 쿼리를 JSON 형식으로 변환
         }).then(response => response.json())
             .then(data => {
                 console.log(data);
@@ -259,6 +264,7 @@ document.addEventListener('DOMContentLoaded', function () {
             resetButton.addEventListener('click', function() {
                 var chatContent = this.closest('.chatScreen').querySelector('#chatContent');
                 chatContent.innerHTML = ''; // 대화 내용을 비움
+                messageHistory = [];
             });
         });
 });

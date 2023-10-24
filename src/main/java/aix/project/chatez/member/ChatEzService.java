@@ -144,9 +144,7 @@ public class ChatEzService {
                     Path oldFilePath = Paths.get("C:/github/uploaded-images/" + myService.getProfilePic().substring(8)).toAbsolutePath();
                     Files.deleteIfExists(oldFilePath);
                 }
-
                 myServiceRepository.deleteById(no);
-
                 return "my_service";
             } else {
                 return "my_service";

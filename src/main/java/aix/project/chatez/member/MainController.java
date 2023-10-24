@@ -36,6 +36,7 @@ public class MainController {
         return "redirect:"+url;
     }
 
+    //생성형AI 수정
     @ResponseBody
     @PostMapping("/update")
     public String handleFileUpdate(@RequestParam("updateName") String updateName,
@@ -51,6 +52,7 @@ public class MainController {
     @PostMapping("/delete")
     public String delete_service(@RequestParam("serviceNo") String serviceNo) {
         String url = chatEzService.handleDeleteService(serviceNo);
+
         return "redirect:"+url;
     }
     
