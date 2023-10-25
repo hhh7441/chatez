@@ -1,11 +1,19 @@
 package aix.project.chatez.member;
 
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.search.SearchHit;
 import org.opensearch.search.builder.SearchSourceBuilder;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.ui.Model;
@@ -13,22 +21,47 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+
+
 
 @Service
 public class ChatEzService {
     private final MyServiceRepository myServiceRepository;
     private final MemberRepository memberRepository;
 
+    private final AmazonS3 amazonS3;
+
+    @Value("${cloud.aws.s3-bucket}")
+    private String bucket;
+    @Value("${cloud.aws.s3-upload-path}")
+    private String uploadPath;
+
     @Autowired
-    public ChatEzService(MyServiceRepository myServiceRepository, MemberRepository memberRepository) {
+    public ChatEzService(MyServiceRepository myServiceRepository, MemberRepository memberRepository, AmazonS3 amazonS3) {
+        this.amazonS3 = amazonS3;
         this.myServiceRepository = myServiceRepository;
         this.memberRepository = memberRepository;
     }
 
+    public ResponseEntity<UrlResource> downloadFile(String fileName){
+        UrlResource urlResource = new UrlResource(amazonS3.getUrl(String.format("%s/example",bucket), fileName));
+        String contentDisposition = String.format("attachment; filename=\\%s\\", URLEncoder.encode(fileName, StandardCharsets.UTF_8));
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
+                .body(urlResource);
+    }
     public void userServiceDate(Model model) {
         //로그인 페이지에서 아이디 연동 부분
         List<Member> loginUser = this.memberRepository.findAll();
@@ -55,32 +88,24 @@ public class ChatEzService {
         }
     }
 
-
-    public String userFileUplaod(MultipartFile imageFile, String aiName) {
+    public String userFileUplaod(MultipartFile imageFile, String aiName, String aiId) throws IOException {
         if (imageFile.isEmpty() || StringUtils.isEmpty(aiName)) {
             return "파일 또는 AI의 이름이 없습니다.";
         }
 
         try {
-            //파일 이름을 얻어옴
-            String fileName = imageFile.getOriginalFilename();
-            String fileUploadDirectory = "C:/github/uploaded-images/" + fileName;
-            Path path = Paths.get(fileUploadDirectory).toAbsolutePath();
-            imageFile.transferTo(path.toFile());
-            System.out.println("파일 명 : " + fileName);
-            System.out.println("AI 이름 : " + aiName);
-
+            String newFileName = s3FileUpload(imageFile);
             List<Member> loginUser = this.memberRepository.findAll();
+            String urlValue = aiName+System.currentTimeMillis();
             if (!loginUser.isEmpty()) {
                 Member member = loginUser.get(0);
-
                 MyService myService = new MyService();
                 myService.setServiceName(aiName);
-                myService.setProfilePic("/images/" + fileName);
+                myService.setProfilePic(newFileName);
+                myService.setServiceId(aiId);
+                myService.setUrl(UUID.nameUUIDFromBytes(urlValue.getBytes()).toString().replace("-",""));
                 myService.setMember(member);  //엔티티와 엔티티 간의 연결 설정
-
                 myServiceRepository.save(myService);
-
                 return "my_service";
             } else {
                 return "로그인한 사용자 정보를 찾을 수 없습니다.";
@@ -89,6 +114,25 @@ public class ChatEzService {
             e.printStackTrace();
             return "my_service";
         }
+    }
+
+    private String s3FileUpload(MultipartFile file) throws IOException {
+        String fileName = file.getOriginalFilename();
+
+        //업로드 날짜 설정
+        String uploadTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String onlyFileName = fileName.substring(0,fileName.lastIndexOf("."));
+        String extension = fileName.substring(fileName.lastIndexOf("."));
+        String newFileName = String.format("%s_%s%s",onlyFileName, uploadTime, extension);
+        //s3 파일 업로드
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentLength(file.getSize());
+        metadata.setContentType(file.getContentType());
+        String imagePath = String.format("%s/%s",bucket, uploadPath);
+
+        amazonS3.putObject(imagePath, newFileName, file.getInputStream(),metadata);
+
+        return newFileName;
     }
 
     public String handleFileUpdate(String updateName, MultipartFile updateFile, String selectNo) {
@@ -140,11 +184,13 @@ public class ChatEzService {
                 MyService myService = optionalMyService.get();
 
                 if (!myService.getProfilePic().isEmpty()) {
-                    // 연관된 이미지 파일 삭제
-                    Path oldFilePath = Paths.get("C:/github/uploaded-images/" + myService.getProfilePic().substring(8)).toAbsolutePath();
-                    Files.deleteIfExists(oldFilePath);
+                    //s3에 있는 연결된 파일 delete
+                    String imagePath = String.format("%s/%s",bucket, uploadPath);
+                    amazonS3.deleteObject(imagePath, myService.getProfilePic());
                 }
+
                 myServiceRepository.deleteById(no);
+
                 return "my_service";
             } else {
                 return "my_service";
@@ -178,7 +224,7 @@ public class ChatEzService {
                 List<Map<String, Object>> files = new ArrayList<>();
                 System.out.println("name : " + myService.getServiceName());
                 try {
-                    SearchRequest searchRequest = new SearchRequest(myService.getServiceName()); // 서비스 이름을 인덱스로 사용
+                    SearchRequest searchRequest = new SearchRequest(myService.getServiceId()); // 서비스 이름을 인덱스로 사용
                     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
                     // Only fetch the "size", "name", and "contentType" fields

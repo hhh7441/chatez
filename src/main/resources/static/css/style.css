@@ -2,17 +2,17 @@
 
 @import url(reset.css);
 
-/*화면 css*/
-html, body, .layout {
-    height: 100%;
+.layout {
+    display: flex;
+    flex-wrap: nowrap;
 }
 
+/*layout left : START*/
+
 .layout_left{
-    min-height: 920px;
-    width: 300px;
+    min-width: 320px;
     padding: 20px;
-    position:relative;
-    float: left;
+    flex-shrink: 0;
 }
 
 .layout_left .ChatEZ_logo{
@@ -50,13 +50,41 @@ html, body, .layout {
 .layout_left #logout_text{
     padding-left: 10px;
 }
+/* layout left : END*/
+/*layout right : START*/
 
 .layout_right {
     background-color: #E6ECFF;
     height: 100%;
-    width: 1600px;
-    float: right;
+    min-width: 1200px;
+    flex-grow: 1;
+    padding : 20px 80px 80px;
 }
+
+/*컨텐츠 레이아웃 영역*/
+/*.layout_right {*/
+/*    padding-right: 40px;*/
+/*    padding-left: 40px;*/
+/*}*/
+
+.layout_right #user{
+    min-width: 1100px;
+    display: block;
+    padding:10px 20px;
+    font-size: 22px;
+    text-align: right;
+}
+
+.layout_right #user img{
+    width: 54px;
+    height: 54px;
+    vertical-align: middle;
+    margin-right: 20px;
+}
+
+/*layout right : END*/
+
+
 
 /*버튼 css*/
 .btn.btn-outline-light {
@@ -103,7 +131,7 @@ html, body, .layout {
 }
 
 .layout_left ul {margin-top: 50px;}
-.layout_left ul li{margin-left: 10px;}
+/*.layout_left ul li{margin-left: 10px;}*/
 .layout_left ul li button{width: 270px; height: 80px; border-radius: 20px;}
 .layout_left ul li button:hover {background-color: #FFF;}/*버튼 css*/
 .btn.btn-outline-light {
@@ -173,32 +201,50 @@ html, body, .layout {
 }
 
 .layout_left ul {margin-top: 50px;}
-.layout_left ul li{margin-left: 10px; margin-top: 20px;}
+.layout_left ul li{margin: 20px 0 0 10px;}
 .layout_left ul li button{width: 270px; height: 80px; border-radius: 20px;}
 .layout_left ul li button:hover{background-color: #E6ECFF;}
 
-/*컨텐츠 레이아웃 영역*/
-.layout_right {
-    padding-right: 40px;
-    padding-left: 40px;
-}
 
-.layout_right {
-    min-width: 1400px; /* 최소 너비를 1400px로 설정 */
-    /* 기존의 스타일 코드 */
-}
 
-.layout_right #user{
-    min-width: 1400px;
-    display: block;
-    padding:10px 60px 10px 0;
-    font-size: 22px;
-    text-align: right;
+/* footer : START */
+footer {
+    color: #fff;
+    min-width: 1520px;
+    background-color: #373737;
+    padding: 0 30px 80px;
 }
-
-.layout_right #user img{
-    width: 54px;
-    height: 54px;
-    vertical-align: middle;
-    margin-right: 20px;
+footer > div {
+    min-width: 1300px;
+    padding: 40px 0;
+    border-bottom: 1px solid #fff;
 }
+footer .top {
+    min-width: 1300px;
+}
+footer .top > .btmlogo span {
+    font-size: 27px;
+    line-height: 60px;
+}
+footer .top > .btmlogo img {
+    width: 86px;
+}
+footer .top nav > ul {
+    width: 440px;
+    margin-top: 30px;
+}
+footer .top nav > ul > li{
+    cursor : pointer;
+}
+footer nav > ul > li button{
+    border: none;
+    background: none;
+    color: inherit;
+}
+footer .info {
+    margin-left: 215px;
+}
+footer .info p {
+    margin-bottom: 20px;
+}
+/* footer : END */

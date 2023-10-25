@@ -14,6 +14,9 @@ public class MyService { //로그확인
     @Column(name = "service_no")
     private Long serviceNo;
 
+    @Column(name = "url", unique = true)
+    private String url;
+
     @Column(name = "service_name", nullable = false)
     private String serviceName;
 
