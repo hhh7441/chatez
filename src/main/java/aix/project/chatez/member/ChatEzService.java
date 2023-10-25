@@ -1,8 +1,6 @@
 package aix.project.chatez.member;
 
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.opensearch.action.delete.DeleteRequest;
 import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.client.RequestOptions;
@@ -10,7 +8,6 @@ import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.search.SearchHit;
 import org.opensearch.search.builder.SearchSourceBuilder;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -188,6 +185,10 @@ public class ChatEzService {
                     String imagePath = String.format("%s/%s",bucket, uploadPath);
                     amazonS3.deleteObject(imagePath, myService.getProfilePic());
                 }
+                RestHighLevelClient client = OpenSearchClient.createClient();
+
+                DeleteRequest deleteRequest = new DeleteRequest(myService.getServiceId(), myService.getServiceNo().toString());
+                client.delete(deleteRequest, RequestOptions.DEFAULT);
 
                 myServiceRepository.deleteById(no);
 
