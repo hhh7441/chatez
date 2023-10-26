@@ -1,7 +1,6 @@
 package aix.project.chatez.member;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.apache.http.entity.ContentType;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,13 +9,30 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.io.IOException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import javax.annotation.PreDestroy;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 
 @Controller
 public class MainController {
     private final MyServiceRepository myServiceRepository;
     private final ChatEzService chatEzService;
     private final S3Properties s3Properties;
+
+    private final ExecutorService executorService = Executors.newFixedThreadPool(10);
+    // 예시: 10개의 스레드를 가진 스레드 풀 생성
 
     public MainController(MemberRepository memberRepository, MyServiceRepository myServiceRepository, ChatEzService chatEzService, S3Properties s3Properties) {
         this.myServiceRepository = myServiceRepository;
@@ -34,14 +50,63 @@ public class MainController {
         model.addAttribute("folder",s3Properties.getS3UploadPath());
         return "service/my_service";
     }
+    private Path saveTempFile(MultipartFile file) throws IOException {
+        Path tempFile = Files.createTempFile("upload", ".tmp");
+        file.transferTo(tempFile.toFile());
+        return tempFile;
+    }
 
     @ResponseBody
     @PostMapping("/upload")
     public String handleFileUpload(@RequestParam("imageFile") MultipartFile imageFile,
                                    @RequestParam("aiName") String aiName,
-                                   @RequestParam("aiId") String aiId) throws IOException {
+                                   @RequestParam("aiId") String aiId,
+                                   @RequestParam("files") MultipartFile files) throws IOException {
         String url =chatEzService.userFileUplaod(imageFile, aiName, aiId);
+
+        Path savedFile = saveTempFile(files);
+        executorService.submit(() -> {
+            try {
+                uploadToFastApi(aiId, savedFile);
+                Files.deleteIfExists(savedFile);
+                chatEzService.activateServiceById(aiId);  // 파일 업로드가 완료되면 콜백 메소드를 호출합니다.
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+
         return "redirect:"+url;
+    }
+
+    private void uploadToFastApi(String aiId, Path file) {
+        String fastApiEndpoint = "http://localhost:8000/upload_files";
+
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            HttpPost postRequest = new HttpPost(fastApiEndpoint);
+
+            // Creating multipart entity
+            HttpEntity entity = MultipartEntityBuilder.create()
+                    .addBinaryBody("files", Files.newInputStream(file), ContentType.MULTIPART_FORM_DATA, file.getFileName().toString())
+                    .addTextBody("index", aiId)
+                    .build();
+
+            postRequest.setEntity(entity);
+
+            HttpResponse response = httpClient.execute(postRequest);
+            if (response.getStatusLine().getStatusCode() != 200) {
+                // Error handling
+                String responseBody = EntityUtils.toString(response.getEntity());
+                throw new RuntimeException("Failed with HTTP error code: " + response.getStatusLine().getStatusCode() + " and message: " + responseBody);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @PreDestroy
+    public void onDestroy() {
+        executorService.shutdown();
     }
 
     //생성형AI 수정
@@ -54,13 +119,12 @@ public class MainController {
 
         return "redirect:"+url;
     }
-    
+
     //생성형AI 삭제
     @ResponseBody
     @PostMapping("/delete")
-    public String delete_service(@RequestParam("serviceNo") String serviceNo) {
+    public String delete_service(@RequestParam("serviceNo") String serviceNo, Model model) {
         String url = chatEzService.handleDeleteService(serviceNo);
-
         return "redirect:"+url;
     }
     

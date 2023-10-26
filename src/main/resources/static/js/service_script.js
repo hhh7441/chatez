@@ -312,6 +312,46 @@ function removeFile(element) {
     document.getElementById('fileInput').value = '';
 }
 
+let csrfTokenElem = document.querySelector('meta[name="_csrf"]');
+let csrfHeaderElem = document.querySelector('meta[name="_csrf_header"]');
+
+if (!csrfTokenElem || !csrfHeaderElem) {
+    console.error('CSRF elements not found in the DOM.');
+}
+
+let csrfToken = csrfTokenElem ? csrfTokenElem.getAttribute('content') : '';
+let csrfHeader = csrfHeaderElem ? csrfHeaderElem.getAttribute('content') : '';
+
+let socket = new SockJS('/ws');
+let stompClient = Stomp.over(socket);
+
+let headers = {};
+headers[csrfHeader] = csrfToken;
+
+stompClient.connect(headers, function(frame) {
+    stompClient.subscribe('/topic/notifications', function(notification) {
+        try {
+            let receivedAiId = notification.body;
+            if (receivedAiId) {
+                onFileUploadComplete(receivedAiId);
+            } else {
+                console.warn('Received notification does not contain aiId.', notification.body);
+            }
+        } catch (e) {
+            console.error('Error parsing notification JSON:', e.message);
+        }
+    });
+});
+
+function onFileUploadComplete(aiId) {
+    const serviceElements = document.querySelectorAll('[data-ai-id]');
+    serviceElements.forEach(element => {
+        if (element.getAttribute('data-ai-id') === aiId) {
+            element.classList.remove('disabled');
+        }
+    });
+}
+
 document.addEventListener("DOMContentLoaded", function() {
     var createAiButton = document.getElementById("createAi");
     createAiButton.addEventListener("click", function() {
@@ -328,33 +368,6 @@ document.addEventListener("DOMContentLoaded", function() {
             return;
         }
 
-        // FastAPI 서버로 fileInput의 파일 전송
-        var fileFormData = new FormData();
-        fileFormData.append('index', aiIdValue);
-        var validFiles = selectedFiles.filter(file => file !== null);
-
-        for (var i = 0; i < validFiles.length; i++) {
-            fileFormData.append("files", validFiles[i]);
-        }
-
-        var fetchUploadFiles = fetch("http://localhost:8000/upload_files", {
-            method: "POST",
-            body: fileFormData,
-        })
-        .then(response => {
-            if (!response.ok) {
-                alert("대화형 AI 생성 중 오류 발생 관리자에게 문의해 주세요.");
-                throw new Error("네트워크 오류가 발생했습니다.");
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('파일이 성공적으로 업로드되었습니다:', data);
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert("대화형 AI 생성 중 오류 발생 관리자에게 문의해 주세요.");
-        });
         var fetchUpload = null;
         if (csrfMetaTag) {
             var csrfToken = csrfMetaTag.content;
@@ -364,6 +377,11 @@ document.addEventListener("DOMContentLoaded", function() {
             formData.append("aiName", aiNameValue);
             formData.append("aiId", aiIdValue);
             formData.append("imageFile", imageInput.files[0]);
+            var validFiles = selectedFiles.filter(file => file !== null);
+
+            for (var i = 0; i < validFiles.length; i++) {
+                formData.append("files", validFiles[i]);
+            }
 
             var fetchUpload = fetch("/upload", {
                 method: "POST",
@@ -417,6 +435,7 @@ document.addEventListener("DOMContentLoaded", function() {
                         }
                     }
                 }, 500);  // 5000 밀리초 = 5초
+                window.location.reload();
             })
             .catch(error => {
                 console.error('Error:', error);
@@ -426,16 +445,9 @@ document.addEventListener("DOMContentLoaded", function() {
             alert("대화형 AI 생성 중 오류 발생 관리자에게 문의해 주세요.");
             console.error("CSRF 메타 태그가 존재하지 않습니다.");
         }
-
-        if(fetchUpload) {
-            Promise.all([fetchUploadFiles, fetchUpload])
-                .then(() => {
-                    window.location.reload();
-                });
-        }
-
     });
 });
+
 const downloadButton = document.getElementById('download');
 downloadButton.addEventListener('click', async () => {
     try {

@@ -650,6 +650,11 @@
     width: 10px;
 }
 
+.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
 #fileList::-webkit-scrollbar-thumb,
 .chat::-webkit-scrollbar-thumb{
     background: #6289FF; /* 스크롤바 색상 */

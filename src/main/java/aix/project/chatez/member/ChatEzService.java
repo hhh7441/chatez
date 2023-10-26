@@ -1,5 +1,6 @@
 package aix.project.chatez.member;
 
+import org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.opensearch.action.delete.DeleteRequest;
 import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.search.SearchResponse;
@@ -13,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,7 +31,7 @@ import java.util.*;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
-
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 
 @Service
@@ -37,6 +39,8 @@ public class ChatEzService {
     private final MyServiceRepository myServiceRepository;
     private final MemberRepository memberRepository;
 
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
     private final AmazonS3 amazonS3;
 
     @Value("${cloud.aws.s3-bucket}")
@@ -102,6 +106,7 @@ public class ChatEzService {
                 myService.setServiceId(aiId);
                 myService.setUrl(UUID.nameUUIDFromBytes(urlValue.getBytes()).toString().replace("-",""));
                 myService.setMember(member);  //엔티티와 엔티티 간의 연결 설정
+                myService.setServiceActive(false);
                 myServiceRepository.save(myService);
                 return "my_service";
             } else {
@@ -182,13 +187,20 @@ public class ChatEzService {
 
                 if (!myService.getProfilePic().isEmpty()) {
                     //s3에 있는 연결된 파일 delete
-                    String imagePath = String.format("%s/%s",bucket, uploadPath);
-                    amazonS3.deleteObject(imagePath, myService.getProfilePic());
+                    String imagePath = String.format("%s/%s", uploadPath, myService.getProfilePic());
+                    System.out.println("bucket : "+bucket);
+                    System.out.println("imagePath : "+imagePath);
+                    amazonS3.deleteObject(bucket, imagePath);
                 }
-                RestHighLevelClient client = OpenSearchClient.createClient();
 
-                DeleteRequest deleteRequest = new DeleteRequest(myService.getServiceId(), myService.getServiceNo().toString());
-                client.delete(deleteRequest, RequestOptions.DEFAULT);
+                try (RestHighLevelClient client = OpenSearchClient.createClient()) {
+                    // 인덱스 삭제
+                    DeleteIndexRequest deleteIndexRequest = new DeleteIndexRequest(myService.getServiceId());
+                    client.indices().delete(deleteIndexRequest, RequestOptions.DEFAULT);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    // 여기에서 오류 처리를 수행합니다.
+                }
 
                 myServiceRepository.deleteById(no);
 
@@ -199,6 +211,18 @@ public class ChatEzService {
         } catch (Exception e) {
             e.printStackTrace();
             return "my_service";
+        }
+    }
+
+    @Transactional
+    public void activateServiceById(String aiId) {
+        MyService myService = myServiceRepository.findByServiceId(aiId);
+
+        if (myService != null) {
+            myService.setServiceActive(true);
+            messagingTemplate.convertAndSend("/topic/notifications", aiId);
+        } else {
+            System.out.println("Service with ID: " + aiId + " not found.");
         }
     }
 

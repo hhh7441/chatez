@@ -26,13 +26,17 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(
                         (authorizeHttpRequests) -> authorizeHttpRequests
+                        .requestMatchers(new AntPathRequestMatcher("/ws/**")).permitAll()
                         .requestMatchers(new AntPathRequestMatcher("/**")).permitAll()
                 );
         return http.build();
     }
     @Bean
     public AmazonS3Client amazonS3Client(){
-        BasicAWSCredentials credentials = new BasicAWSCredentials(s3Properties.getCredentialsAccessKey(), s3Properties.getCredentialsSecreteKey());
+        BasicAWSCredentials credentials = new BasicAWSCredentials(
+                s3Properties.getCredentialsAccessKey(),
+                s3Properties.getCredentialsSecreteKey()
+        );
 
         return (AmazonS3Client) AmazonS3ClientBuilder
                 .standard()
