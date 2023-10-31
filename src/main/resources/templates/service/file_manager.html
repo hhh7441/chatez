@@ -14,7 +14,17 @@
         </ul>
     </div>
     <div class="file_manager">
-        <h3><img th:src="@{img/manager_logo_on.png}" alt="manager_logo" class="manager_logo">파일 관리</h3>
+        <h3>
+            <span>
+                <img th:src="@{img/manager_logo_on.png}" alt="manager_logo" class="manager_logo">파일 관리
+            </span>
+            <div>
+                <input type="file" id="fileInput" style="display: none;" accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" multiple >
+                <button id="file_select" disabled>
+                    <img th:src="@{img/upload_icon.png}" alt="upload_icon" class="upload_icon">파일 선택
+                </button>
+            </div>
+        </h3>
         <div class="file_list">
             <div id="file_title">
                 <ul>
@@ -40,6 +50,9 @@
                     <li><span th:text="${file.contentType}"></span></li>
                     <li><span th:text="${file.uploadTime}"></span></li>
                 </ul>
+            </div>
+            <div id="file_delete">
+                <button id="file_delete_button" disabled><img th:src="@{img/trash_icon.png}" alt="trash_icon" class="trash_icon">삭제 하기</button>
             </div>
         </div>
     </div>

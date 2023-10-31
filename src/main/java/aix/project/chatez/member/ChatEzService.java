@@ -193,14 +193,14 @@ public class ChatEzService {
                     amazonS3.deleteObject(bucket, imagePath);
                 }
 
-                try (RestHighLevelClient client = OpenSearchClient.createClient()) {
-                    // 인덱스 삭제
-                    DeleteIndexRequest deleteIndexRequest = new DeleteIndexRequest(myService.getServiceId());
-                    client.indices().delete(deleteIndexRequest, RequestOptions.DEFAULT);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    // 여기에서 오류 처리를 수행합니다.
-                }
+//                try (RestHighLevelClient client = OpenSearchClient.createClient()) {
+//                    // 인덱스 삭제
+//                    DeleteIndexRequest deleteIndexRequest = new DeleteIndexRequest(myService.getServiceId());
+//                    client.indices().delete(deleteIndexRequest, RequestOptions.DEFAULT);
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                    // 여기에서 오류 처리를 수행합니다.
+//                }
 
                 myServiceRepository.deleteById(no);
 

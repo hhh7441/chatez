@@ -24,6 +24,8 @@ function showFilesForService(button) {
     });
 
     button.classList.add('clicked');
+    document.getElementById('file_select').removeAttribute('disabled');
+    document.getElementById('file_delete_button').removeAttribute('disabled');
 }
 
 // uuid 값 생성
@@ -32,59 +34,115 @@ function generateUuid(){
     document.getElementById("aiId").value = newUUID;
 }
 
-document.getElementById("showPanel").addEventListener("click", function() {
-    closeAllPanels();
-    var newScreen = document.getElementById("newScreen");
-    newScreen.classList.remove('hide');
-    newScreen.classList.add('active');
-    generateUuid();
-});
+var showPanelElement = document.getElementById("showPanel");
 
-document.getElementById("createClose").addEventListener("click", function() {
-    var newScreen = document.getElementById("newScreen");
-    newScreen.classList.remove('active');
+if (showPanelElement) {
+    showPanelElement.addEventListener("click", function() {
+        closeAllPanels();
+        var newScreen = document.getElementById("newScreen");
+        if (newScreen) {
+            newScreen.classList.remove('hide');
+            newScreen.classList.add('active');
+            generateUuid();
+        } else {
+            console.error('Element with ID "newScreen" not found.');
+        }
+    });
+}
 
-    var aiName = document.getElementById("aiName");
-    aiName.value = '';
+var createCloseElement = document.getElementById("createClose");
 
-    var imageInput = document.getElementById("imageInput");
-    imageInput.value = '';
+if (createCloseElement) {
+    createCloseElement.addEventListener("click", function() {
 
-    var uploadProfile = document.getElementById("uploadProfile");
-    uploadProfile.src = 'img/profile_icon.png';
+        var newScreen = document.getElementById("newScreen");
+        if (newScreen) {
+            newScreen.classList.remove('active');
+        }
 
-    var fileInput = document.getElementById("fileInput");
-    fileInput.value = '';
+        var aiName = document.getElementById("aiName");
+        if (aiName) {
+            aiName.value = '';
+        }
 
-    var fileList = document.getElementById("fileList");
-    while (fileList.firstChild) {
-        fileList.removeChild(fileList.firstChild);
-    }
-});
+        var imageInput = document.getElementById("imageInput");
+        if (imageInput) {
+            imageInput.value = '';
+        }
 
-document.getElementById("fileUpload").addEventListener("click", function() {
+        var uploadProfile = document.getElementById("uploadProfile");
+        if (uploadProfile) {
+            uploadProfile.src = 'img/profile_icon.png';
+        }
+
+        var fileInput = document.getElementById("fileInput");
+        if (fileInput) {
+            fileInput.value = '';
+        }
+
+        var fileList = document.getElementById("fileList");
+        if (fileList) {
+            while (fileList.firstChild) {
+                fileList.removeChild(fileList.firstChild);
+            }
+        }
+    });
+}
+
+var fileUploadElement = document.getElementById("fileUpload");
+
+if (fileUploadElement) {
+    fileUploadElement.addEventListener("click", function() {
+        var fileInputElement = document.getElementById("fileInput");
+        if (fileInputElement) {
+            fileInputElement.click();
+        } else {
+            console.error('Element with ID "fileInput" not found.');
+        }
+    });
+}
+
+document.getElementById("file_select").addEventListener("click", function() {
     document.getElementById("fileInput").click();
 });
 
-document.getElementById("uploadProfile").addEventListener("click", function() {
-    document.getElementById("imageInput").click();
-});
+var uploadProfileElement = document.getElementById("uploadProfile");
 
-document.getElementById("imageInput").addEventListener("change", function() {
-    console.log(this.files);
-});
-
-document.getElementById('imageInput').addEventListener('change', function(e) {
-    if (e.target.files && e.target.files[0]) {
-        const reader = new FileReader();
-
-        reader.onload = function(e) {
-            document.getElementById('uploadProfile').src = e.target.result;
+if (uploadProfileElement) {
+    uploadProfileElement.addEventListener("click", function() {
+        var imageInputElement = document.getElementById("imageInput");
+        if (imageInputElement) {
+            imageInputElement.click();
+        } else {
+            console.error('Element with ID "imageInput" not found.');
         }
+    });
+}
 
-        reader.readAsDataURL(e.target.files[0]);
-    }
-});
+var imageInputElement = document.getElementById("imageInput");
+
+if (imageInputElement) {
+    imageInputElement.addEventListener("change", function() {
+        console.log(this.files);
+    });
+}
+
+var imageInputElement = document.getElementById('imageInput');
+var uploadProfileElement = document.getElementById('uploadProfile');
+
+if (imageInputElement && uploadProfileElement) {
+    imageInputElement.addEventListener('change', function(e) {
+        if (e.target.files && e.target.files[0]) {
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                uploadProfileElement.src = e.target.result;
+            }
+
+            reader.readAsDataURL(e.target.files[0]);
+        }
+    });
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     // 'profile_icon' 클래스를 가진 모든 요소 선택
@@ -354,6 +412,7 @@ function onFileUploadComplete(aiId) {
 
 document.addEventListener("DOMContentLoaded", function() {
     var createAiButton = document.getElementById("createAi");
+    if (createAiButton) {
     createAiButton.addEventListener("click", function() {
         var aiNameValue = document.getElementById("aiName").value;
         var aiIdValue = document.getElementById("aiId").value;
@@ -446,16 +505,17 @@ document.addEventListener("DOMContentLoaded", function() {
             console.error("CSRF 메타 태그가 존재하지 않습니다.");
         }
     });
-});
+}});
 
 const downloadButton = document.getElementById('download');
-downloadButton.addEventListener('click', async () => {
+
+if (downloadButton) {
+    downloadButton.addEventListener('click', async () => {
     try {
         const response = await fetch('/example_download');
         if (!response.ok) {
             throw new Error('Network response was not ok ' + response.statusText);
         }
-
         const blob = await response.blob();  // 파일 데이터를 Blob 형태로 받아옵니다.
         const url = window.URL.createObjectURL(blob);  // Blob 데이터로부터 URL을 생성합니다.
         const a = document.createElement('a');  // 새로운 <a> 태그를 생성합니다.
@@ -468,8 +528,7 @@ downloadButton.addEventListener('click', async () => {
     } catch (error) {
         console.error('Error during file download:', error);
     }
-
-})
+})}
 
 document.addEventListener("DOMContentLoaded", function () {
     document.addEventListener('click', function (event) {
