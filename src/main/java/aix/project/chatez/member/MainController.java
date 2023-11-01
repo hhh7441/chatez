@@ -50,6 +50,7 @@ public class MainController {
         model.addAttribute("folder",s3Properties.getS3UploadPath());
         return "service/my_service";
     }
+
     private Path saveTempFile(MultipartFile file) throws IOException {
         Path tempFile = Files.createTempFile("upload", ".tmp");
         file.transferTo(tempFile.toFile());
@@ -61,20 +62,21 @@ public class MainController {
     public String handleFileUpload(@RequestParam("imageFile") MultipartFile imageFile,
                                    @RequestParam("aiName") String aiName,
                                    @RequestParam("aiId") String aiId,
-                                   @RequestParam("files") MultipartFile files) throws IOException {
+                                   @RequestParam("files") MultipartFile[] files) throws IOException {
         String url =chatEzService.userFileUplaod(imageFile, aiName, aiId);
 
-        Path savedFile = saveTempFile(files);
-        executorService.submit(() -> {
-            try {
-                uploadToFastApi(aiId, savedFile);
-                Files.deleteIfExists(savedFile);
-                chatEzService.activateServiceById(aiId);  // 파일 업로드가 완료되면 콜백 메소드를 호출합니다.
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-
+        for (MultipartFile file : files) {
+            Path savedFile = saveTempFile(file);
+            executorService.submit(() -> {
+                try {
+                    uploadToFastApi(aiId, savedFile);
+                    Files.deleteIfExists(savedFile);
+                    // 나머지 로직
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+        }
         return "redirect:"+url;
     }
 
