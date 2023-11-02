@@ -13,6 +13,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import javax.annotation.PreDestroy;
@@ -52,7 +54,9 @@ public class MainController {
     }
 
     private Path saveTempFile(MultipartFile file) throws IOException {
-        Path tempFile = Files.createTempFile("upload", ".tmp");
+        String originalFilename = file.getOriginalFilename();
+        String fileExtension = originalFilename != null ? originalFilename.substring(originalFilename.lastIndexOf(".")) : ".tmp";
+        Path tempFile = Files.createTempFile("upload", fileExtension);
         file.transferTo(tempFile.toFile());
         return tempFile;
     }
@@ -65,32 +69,40 @@ public class MainController {
                                    @RequestParam("files") MultipartFile[] files) throws IOException {
         String url =chatEzService.userFileUplaod(imageFile, aiName, aiId);
 
+        List<Path> savedFiles = new ArrayList<>();
         for (MultipartFile file : files) {
             Path savedFile = saveTempFile(file);
-            executorService.submit(() -> {
-                try {
-                    uploadToFastApi(aiId, savedFile);
-                    Files.deleteIfExists(savedFile);
-                    // 나머지 로직
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            });
+            savedFiles.add(savedFile);
         }
+
+        executorService.submit(() -> {
+            try {
+                uploadToFastApi(aiId, savedFiles);
+                for (Path savedFile : savedFiles) {
+                    Files.deleteIfExists(savedFile);
+                }
+                chatEzService.activateServiceById(aiId);  // 추가된 코드
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
         return "redirect:"+url;
     }
 
-    private void uploadToFastApi(String aiId, Path file) {
+    private void uploadToFastApi(String aiId, List<Path> files) {
         String fastApiEndpoint = "http://localhost:8000/upload_files";
 
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpPost postRequest = new HttpPost(fastApiEndpoint);
 
             // Creating multipart entity
-            HttpEntity entity = MultipartEntityBuilder.create()
-                    .addBinaryBody("files", Files.newInputStream(file), ContentType.MULTIPART_FORM_DATA, file.getFileName().toString())
-                    .addTextBody("index", aiId)
-                    .build();
+            MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+            for (Path file : files) {
+                builder.addBinaryBody("files", Files.newInputStream(file), ContentType.MULTIPART_FORM_DATA, file.getFileName().toString());
+            }
+            builder.addTextBody("index", aiId);
+
+            HttpEntity entity = builder.build();
 
             postRequest.setEntity(entity);
 

@@ -102,9 +102,22 @@ if (fileUploadElement) {
     });
 }
 
-document.getElementById("file_select").addEventListener("click", function() {
-    document.getElementById("fileInput").click();
-});
+//document.getElementById("file_select").addEventListener("click", function() {
+//    document.getElementById("fileInput").click();
+//});
+
+var fileSelectElement = document.getElementById("file_select");
+
+if (fileSelectElement) {-
+    fileSelectElement.addEventListener("click", function() {
+        var fileInputElement = document.getElementById("fileInput");
+        if (fileInputElement) {
+            fileInputElement.click();
+        } else {
+            console.error('Element with ID "fileInput" not found.');
+        }
+    });
+}
 
 var uploadProfileElement = document.getElementById("uploadProfile");
 
