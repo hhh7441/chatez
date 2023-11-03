@@ -225,6 +225,17 @@ public class ChatEzService {
         }
     }
 
+    @Transactional
+    public void activateServiceFile(String serviceId, Map<String, List<Map<String, Object>>> servicesFilesMap) {
+        // serviceId와 servicesFilesMap을 포함하는 새로운 Map을 생성합니다.
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("serviceId", serviceId);
+        payload.put("servicesFilesMap", servicesFilesMap);
+
+        // 새로운 payload를 메시지로 전송합니다.
+        messagingTemplate.convertAndSend("/topic/payloadNotifications", payload);
+    }
+
     public Map<String, List<Map<String, Object>>> awsFileData() {
         RestHighLevelClient client = OpenSearchClient.createClient();
         List<Member> loginUser = this.memberRepository.findAll();

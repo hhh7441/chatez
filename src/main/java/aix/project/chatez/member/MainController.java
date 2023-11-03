@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import javax.annotation.PreDestroy;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -81,40 +82,72 @@ public class MainController {
     @PostMapping("/fileUpdate")
     public ResponseEntity<?> handleMultipleFileUpload(
             @RequestParam("files") List<MultipartFile> files,
-            @RequestParam("serviceId") String serviceId) {
-        for (MultipartFile file : files) {
-            try {
-                String fileContent = new String(file.getBytes(), StandardCharsets.UTF_8);
-                String[] sentences = fileContent.split("\\.");
+            @RequestParam("serviceId") String serviceId) throws IOException {
 
-                try (RestHighLevelClient client = OpenSearchClient.createClient()) {
-                    for (String sentence : sentences) {
-                        Map<String, Object> sentenceDocument = new HashMap<>();
-                        sentenceDocument.put("size", file.getSize());
-                        sentenceDocument.put("contents", sentence.trim());
-                        sentenceDocument.put("name", file.getOriginalFilename());
-                        sentenceDocument.put("contentType", file.getContentType());
-                        sentenceDocument.put("uploadTime", System.currentTimeMillis());
-                        System.out.println("serviceId : "+serviceId);
-                        IndexRequest indexRequest = new IndexRequest(serviceId);
-                        indexRequest.source(sentenceDocument, XContentType.JSON);
-                        client.index(indexRequest, RequestOptions.DEFAULT);
-                    }
+        List<Path> savedFiles = new ArrayList<>();
+        for (MultipartFile file : files) {
+            Path savedFile = saveTempFile(file);
+            savedFiles.add(savedFile);
+        }
+        // 비동기 작업을 위한 Future 생성
+        Future<?> future = executorService.submit(() -> {
+            try {
+                // 파일을 FastAPI 서버에 업데이트하는 로직
+                updateToFastApi(serviceId, savedFiles);
+                // 임시 파일 삭제
+                for (Path savedFile : savedFiles) {
+                    Files.deleteIfExists(savedFile);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-                // JSON 형태의 에러 메시지 반환
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body("{\"error\": \"Failed to process file " + file.getOriginalFilename() + "\"}");
+                throw new RuntimeException("Error processing files", e);
             }
-        }
+        });
+
         try {
+            // Future 작업의 완료를 기다립니다.
+            future.get(); // 필요하다면 타임아웃을 설정할 수 있습니다.
+            Thread.sleep(1000);
+            // 비동기 작업이 완료된 후에 파일 데이터를 가져옵니다.
             Map<String, List<Map<String, Object>>> servicesFilesMap = chatEzService.awsFileData();
-            return ResponseEntity.ok(servicesFilesMap); // Map을 JSON으로 변환하여 응답
+            // 업데이트된 파일 리스트를 JSON 형태로 클라이언트에 반환합니다.
+            return ResponseEntity.ok(servicesFilesMap);
         } catch (Exception e) {
+            // 작업 중 오류가 발생한 경우
             e.printStackTrace();
-            String errorMessage = String.format("서비스 ID '%s'에 대한 파일 처리 실패", serviceId);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.singletonMap("error", errorMessage));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Error during file processing"));
+        }
+    }
+
+    private void updateToFastApi(String serviceId, List<Path> files) {
+        // FastAPI 엔드포인트 URL 설정
+        String fastApiEndpoint = "http://localhost:8000/update_files";
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            // POST 요청 생성
+            HttpPost postRequest = new HttpPost(fastApiEndpoint);
+
+            // multipart 엔티티 구성
+            MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+            for (Path file : files) {
+                builder.addBinaryBody("files", Files.newInputStream(file), ContentType.DEFAULT_BINARY, file.getFileName().toString());
+            }
+            builder.addTextBody("index", serviceId, ContentType.TEXT_PLAIN);
+
+            // 요청에 엔티티 추가
+            HttpEntity entity = builder.build();
+            postRequest.setEntity(entity);
+
+            // 요청 실행
+            HttpResponse response = httpClient.execute(postRequest);
+            // 성공 여부 확인
+            if (response.getStatusLine().getStatusCode() != 200) {
+                // 에러 처리
+                String responseBody = EntityUtils.toString(response.getEntity());
+                throw new RuntimeException("실패: HTTP 에러 코드: " + response.getStatusLine().getStatusCode() + " : " + responseBody);
+            }
+        } catch (IOException e) {
+            // 예외 처리
+            e.printStackTrace();
         }
     }
 

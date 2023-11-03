@@ -5,38 +5,6 @@ function closeAllPanels() {
     });
 }
 
-function showFilesForService(button) {
-    var serviceName = button.getAttribute('data-service-name');
-    var serviceId = button.getAttribute('data-service-id');
-    console.log(serviceName);
-    console.log(serviceId);
-
-    var serviceElements = document.querySelectorAll('#file_index');
-    serviceElements.forEach(function(element) {
-        if (element.getAttribute('data-service-name') === serviceName) {
-            element.style.display = 'block';
-        } else {
-            element.style.display = 'none';
-        }
-    });
-
-    var buttons = document.querySelectorAll('.chatez_get_file');
-    buttons.forEach(function(btn) {
-        btn.classList.remove('clicked');
-    });
-
-    button.classList.add('clicked');
-
-    // file_select 버튼에 data-service-name 속성을 설정합니다.
-    var fileSelectButton = document.getElementById('file_select');
-    fileSelectButton.setAttribute('data-service-id', serviceId);
-    fileSelectButton.setAttribute('data-service-name', serviceName);
-    fileSelectButton.removeAttribute('disabled');
-
-    // file_delete_button의 상태를 업데이트합니다.
-    document.getElementById('file_delete_button').removeAttribute('disabled');
-}
-
 // uuid 값 생성
 function generateUuid(){
     const newUUID = uuid.v4().replace(/-/g, '');
@@ -117,7 +85,7 @@ if (fileUploadElement) {
 
 var fileSelectElement = document.getElementById("file_select");
 
-if (fileSelectElement) {-
+if (fileSelectElement) {
     fileSelectElement.addEventListener("click", function() {
         var fileInputElement = document.getElementById("fileInput");
         if (fileInputElement) {
@@ -127,6 +95,71 @@ if (fileSelectElement) {-
         }
     });
 }
+
+function showFilesForService(button) {
+    var serviceName = button.getAttribute('data-service-name');
+    var serviceId = button.getAttribute('data-service-id');
+    console.log(serviceName);
+    console.log(serviceId);
+
+    var serviceElements = document.querySelectorAll('#file_index');
+    serviceElements.forEach(function(element) {
+        if (element.getAttribute('data-service-name') === serviceName) {
+            element.style.display = 'block';
+        } else {
+            element.style.display = 'none';
+        }
+    });
+
+    var buttons = document.querySelectorAll('.chatez_get_file');
+    buttons.forEach(function(btn) {
+        btn.classList.remove('clicked');
+    });
+
+    button.classList.add('clicked');
+
+    var fileSelectButton = document.getElementById('file_select');
+    fileSelectButton.setAttribute('data-service-id', serviceId);
+    fileSelectButton.setAttribute('data-service-name', serviceName);
+    fileSelectButton.removeAttribute('disabled');
+
+    document.getElementById('file_delete_button').removeAttribute('disabled');
+}
+
+function restoreUploadState() {
+    var uploadingServiceId = localStorage.getItem('uploadingServiceId');
+    var serviceButtons = document.querySelectorAll('.chatez_get_file');
+
+    serviceButtons.forEach(function(button) {
+        var serviceId = button.getAttribute('data-service-id');
+        // 업로드 중인 서비스의 버튼을 비활성화합니다.
+        if (serviceId === uploadingServiceId) {
+            button.disabled = true;
+            button.classList.add('clicked');
+        } else {
+            button.disabled = false;
+            button.classList.remove('clicked');
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', restoreUploadState);
+
+// 파일 업로드가 성공했거나 오류가 발생했을 때 로컬 스토리지에서 업로드 상태를 제거하고 버튼 상태를 복원하는 함수입니다.
+function finalizeUpload(serviceId) {
+    localStorage.removeItem('uploadingServiceId');
+    var serviceButtons = document.querySelectorAll('.chatez_get_file');
+    serviceButtons.forEach(function(button) {
+        if (button.getAttribute('data-service-id') === serviceId) {
+            button.disabled = false;
+            button.classList.add('clicked');
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', (event) => {
+    restoreUploadState();
+});
 
 var fileInputElement = document.getElementById("fileInput");
 var fileSelectElement = document.getElementById("file_select");
@@ -143,8 +176,8 @@ if (fileInputElement && fileSelectElement) {
 
             // 선택된 파일들을 FormData에 추가합니다.
             const files = event.target.files;
-            if (files.length > 0) { // 파일이 선택되었는지 확인합니다.
-                // 해당 서비스의 버튼을 찾아 비활성화하고 클릭 상태를 제거합니다.
+            if (files.length > 0) {
+                localStorage.setItem('uploadingServiceId', serviceId);
                 var serviceButtons = document.querySelectorAll('.chatez_get_file');
                 serviceButtons.forEach(function(button) {
                     if (button.getAttribute('data-service-id') === serviceId) {
@@ -179,13 +212,7 @@ if (fileInputElement && fileSelectElement) {
                 })
                 .then(data => {
                     console.log('Success:', data);
-                    // 파일 업로드 성공 후 버튼을 다시 활성화하고 클릭 상태를 부여합니다.
-                    serviceButtons.forEach(function(button) {
-                        if (button.getAttribute('data-service-id') === serviceId) {
-                            button.disabled = false; // 버튼을 활성화합니다.
-                            button.classList.add('clicked'); // 클릭 상태 클래스를 추가합니다.
-                        }
-                    });
+                    finalizeUpload(serviceId); // 업로드 완료 처리
                     for (const [serviceId, fileList] of Object.entries(data)) {
                         // 이제 fileList는 해당 serviceId의 파일 배열입니다
                         // 이 fileList를 UI를 업데이트하는 함수에 전달할 수 있습니다
@@ -195,21 +222,17 @@ if (fileInputElement && fileSelectElement) {
                 .catch((error) => {
                     console.error('Error:', error);
                     // 오류가 발생하면 버튼을 다시 활성화하고 클릭 상태를 복구합니다.
-                    serviceButtons.forEach(function(button) {
-                        if (button.getAttribute('data-service-id') === serviceId) {
-                            button.disabled = false; // 버튼을 활성화합니다.
-                            button.classList.add('clicked'); // 클릭 상태 클래스를 추가합니다.
-                        }
-                    });
+                    finalizeUpload(serviceId); // 업로드 완료 처리
                 });
             }
         } else {
             console.error('CSRF 메타 태그를 찾을 수 없습니다.');
         }
-    }, { once: true });
+    });
 } else {
     console.error('필요한 HTML 요소를 찾을 수 없습니다.');
 }
+
 
 function updateFileListForService(serviceId, fileList) {
     // 서비스 ID에 해당하는 div를 찾습니다.
