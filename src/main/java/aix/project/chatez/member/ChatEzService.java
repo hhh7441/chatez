@@ -27,6 +27,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
@@ -225,15 +226,18 @@ public class ChatEzService {
         }
     }
 
-    @Transactional
-    public void activateServiceFile(String serviceId, Map<String, List<Map<String, Object>>> servicesFilesMap) {
-        // serviceId와 servicesFilesMap을 포함하는 새로운 Map을 생성합니다.
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("serviceId", serviceId);
-        payload.put("servicesFilesMap", servicesFilesMap);
+    private final Map<String, Boolean> uploadStatusMap = new ConcurrentHashMap<>();
 
-        // 새로운 payload를 메시지로 전송합니다.
-        messagingTemplate.convertAndSend("/topic/payloadNotifications", payload);
+    public void startUpload(String serviceId) {
+        uploadStatusMap.put(serviceId, false);
+    }
+
+    public void completeUpload(String serviceId) {
+        uploadStatusMap.put(serviceId, true);
+    }
+
+    public boolean isUploadCompleted(String serviceId) {
+        return uploadStatusMap.getOrDefault(serviceId, false);
     }
 
     public Map<String, List<Map<String, Object>>> awsFileData() {

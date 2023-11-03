@@ -84,6 +84,7 @@ public class MainController {
             @RequestParam("files") List<MultipartFile> files,
             @RequestParam("serviceId") String serviceId) throws IOException {
 
+        chatEzService.startUpload(serviceId);
         List<Path> savedFiles = new ArrayList<>();
         for (MultipartFile file : files) {
             Path savedFile = saveTempFile(file);
@@ -98,6 +99,7 @@ public class MainController {
                 for (Path savedFile : savedFiles) {
                     Files.deleteIfExists(savedFile);
                 }
+                chatEzService.completeUpload(serviceId);
             } catch (Exception e) {
                 e.printStackTrace();
                 throw new RuntimeException("Error processing files", e);
@@ -117,6 +119,22 @@ public class MainController {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Error during file processing"));
         }
+    }
+
+    @GetMapping("/uploadStatus")
+    public ResponseEntity<?> getUploadStatus(@RequestParam String serviceId) {
+        boolean isCompleted = chatEzService.isUploadCompleted(serviceId);
+        if(isCompleted) {
+            return ResponseEntity.ok(Map.of("serviceId", serviceId, "status", "completed"));
+        } else {
+            return ResponseEntity.ok(Map.of("serviceId", serviceId, "status", "inProgress"));
+        }
+    }
+
+    @GetMapping("/getFileList")
+    public ResponseEntity<?> getFileList() {
+        Map<String, List<Map<String, Object>>> servicesFilesMap = chatEzService.awsFileData();
+        return ResponseEntity.ok(servicesFilesMap);
     }
 
     private void updateToFastApi(String serviceId, List<Path> files) {
