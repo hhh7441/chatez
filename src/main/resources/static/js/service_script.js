@@ -634,8 +634,69 @@ function onFileUploadComplete(aiId) {
     const serviceElements = document.querySelectorAll('[data-ai-id]');
     serviceElements.forEach(element => {
         if (element.getAttribute('data-ai-id') === aiId) {
-            element.classList.remove('disabled');
+            element.classList.remove('disabled'); // 스타일을 위한 CSS 클래스 제거
         }
+    });
+
+    const fileManagerButtons = document.querySelectorAll('.chatez_get_file');
+    fileManagerButtons.forEach(button => {
+        if (button.getAttribute('data-service-id') === aiId) {
+            // 버튼의 'disabled' 상태를 해제합니다.
+            button.removeAttribute('disabled');
+            // 해당 버튼에 'disabled' 클래스가 있다면 제거합니다.
+            button.classList.remove('disabled');
+            awsFileListAndUpdate();
+        }
+    });
+}
+
+function awsFileListAndUpdate() {
+    // 서버로부터 최신 파일 목록을 가져오는 코드
+    fetch(`/getFileList`)
+        .then(response => response.json())
+        .then(data => {
+            // 파일 목록 업데이트 로직
+            for (const [serviceId, fileList] of Object.entries(data)) {
+                awsUpdateFileListForService(serviceId, fileList);
+            }
+        })
+        .catch(error => console.error('Error fetching file list:', error));
+}
+
+
+function awsUpdateFileListForService(serviceId, fileList) {
+    // 서비스 ID에 해당하는 div 컨테이너를 찾습니다.
+    let serviceFilesContainer = document.querySelector(`div[data-service-name="${serviceId}"]`);
+
+    // 해당 컨테이너가 없으면 새로 생성합니다.
+    if (!serviceFilesContainer) {
+        console.log(`새 컨테이너 생성, 서비스 ID: ${serviceId}`);
+
+        // 파일 목록을 위한 새 div 요소를 생성합니다.
+        serviceFilesContainer = document.createElement('div');
+        serviceFilesContainer.setAttribute('data-service-name', serviceId);
+        serviceFilesContainer.classList.add('file_index');
+
+        // 선택적으로 초기에는 숨겨진 상태로 설정할 수 있습니다.
+        serviceFilesContainer.style.display = 'none';
+
+        // 새 컨테이너를 부모 요소에 추가합니다. 이 부분은 당신의 HTML 구조에 맞게 정의해야 합니다.
+        const parentElement = document.querySelector('.file_list'); // 부모 컨테이너가 될 요소를 선택해야 합니다.
+        parentElement.appendChild(serviceFilesContainer);
+    }
+
+    // 파일 목록을 지우고 새 목록으로 업데이트합니다.
+    serviceFilesContainer.innerHTML = '';
+    fileList.forEach(file => {
+        const ul = document.createElement('ul');
+        ul.innerHTML = `
+            <li><input type="checkbox"></li>
+            <li><img src="img/txt-file.png" alt="txt-file" class="txt-file"><span>${file.name}</span></li>
+            <li><span>${file.size}</span></li>
+            <li><span>${file.contentType}</span></li>
+            <li><span>${new Date(file.uploadTime).toLocaleDateString('ko-KR')}</span></li>
+        `;
+        serviceFilesContainer.appendChild(ul);
     });
 }
 

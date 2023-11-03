@@ -5,6 +5,7 @@ import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.client.indices.GetIndexRequest;
 import org.opensearch.search.SearchHit;
 import org.opensearch.search.builder.SearchSourceBuilder;
 import org.springframework.beans.factory.annotation.Value;
@@ -220,6 +221,7 @@ public class ChatEzService {
 
         if (myService != null) {
             myService.setServiceActive(true);
+            System.out.println("aiId : " + aiId);
             messagingTemplate.convertAndSend("/topic/notifications", aiId);
         } else {
             System.out.println("Service with ID: " + aiId + " not found.");
@@ -263,6 +265,13 @@ public class ChatEzService {
                 List<Map<String, Object>> files = new ArrayList<>();
                 System.out.println("name : " + myService.getServiceName());
                 try {
+                    GetIndexRequest getIndexRequest = new GetIndexRequest(myService.getServiceId());
+                    boolean exists = client.indices().exists(getIndexRequest, RequestOptions.DEFAULT);
+                    if (!exists) {
+                        // 인덱스가 없는 경우의 처리 로직
+                        System.out.println("인덱스가 존재하지 않습니다: " + myService.getServiceId());
+                        continue; // 다음 서비스로 넘어갑니다
+                    }
                     SearchRequest searchRequest = new SearchRequest(myService.getServiceId()); // 서비스 이름을 인덱스로 사용
                     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
