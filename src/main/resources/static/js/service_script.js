@@ -7,7 +7,9 @@ function closeAllPanels() {
 
 function showFilesForService(button) {
     var serviceName = button.getAttribute('data-service-name');
+    var serviceId = button.getAttribute('data-service-id');
     console.log(serviceName);
+    console.log(serviceId);
 
     var serviceElements = document.querySelectorAll('#file_index');
     serviceElements.forEach(function(element) {
@@ -24,7 +26,14 @@ function showFilesForService(button) {
     });
 
     button.classList.add('clicked');
-    document.getElementById('file_select').removeAttribute('disabled');
+
+    // file_select 버튼에 data-service-name 속성을 설정합니다.
+    var fileSelectButton = document.getElementById('file_select');
+    fileSelectButton.setAttribute('data-service-id', serviceId);
+    fileSelectButton.setAttribute('data-service-name', serviceName);
+    fileSelectButton.removeAttribute('disabled');
+
+    // file_delete_button의 상태를 업데이트합니다.
     document.getElementById('file_delete_button').removeAttribute('disabled');
 }
 
@@ -117,6 +126,114 @@ if (fileSelectElement) {-
             console.error('Element with ID "fileInput" not found.');
         }
     });
+}
+
+var fileInputElement = document.getElementById("fileInput");
+var fileSelectElement = document.getElementById("file_select");
+
+if (fileInputElement && fileSelectElement) {
+    fileInputElement.addEventListener('change', function(event) {
+        // CSRF 토큰을 meta 태그에서 읽어옵니다.
+        var csrfMetaTag = document.querySelector('meta[name="_csrf"]');
+
+        if (csrfMetaTag) {
+            // 서비스 ID를 가져옵니다.
+            let serviceId = fileSelectElement.getAttribute('data-service-id');
+            let serviceName = fileSelectElement.getAttribute('data-service-name');
+
+            // 선택된 파일들을 FormData에 추가합니다.
+            const files = event.target.files;
+            if (files.length > 0) { // 파일이 선택되었는지 확인합니다.
+                // 해당 서비스의 버튼을 찾아 비활성화하고 클릭 상태를 제거합니다.
+                var serviceButtons = document.querySelectorAll('.chatez_get_file');
+                serviceButtons.forEach(function(button) {
+                    if (button.getAttribute('data-service-id') === serviceId) {
+                        button.disabled = true; // 버튼을 비활성화합니다.
+                        button.classList.remove('clicked'); // 클릭 상태 클래스를 제거합니다.
+                    }
+                });
+
+                let formData = new FormData();
+                for (let i = 0; i < files.length; i++) {
+                    formData.append('files', files[i]);
+                }
+                formData.append('serviceId', serviceId);
+
+                // Fetch 요청에 CSRF 토큰을 포함합니다.
+                var csrfToken = csrfMetaTag.content;
+
+                // FormData를 사용하여 파일을 서버에 업로드하는 fetch 요청을 수행합니다.
+                fetch('/fileUpdate', {
+                    method: 'POST',
+                    headers: {
+                        "X-CSRF-TOKEN": csrfToken,
+                    },
+                    body: formData,
+                    credentials: 'include'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Server responded with status ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Success:', data);
+                    // 파일 업로드 성공 후 버튼을 다시 활성화하고 클릭 상태를 부여합니다.
+                    serviceButtons.forEach(function(button) {
+                        if (button.getAttribute('data-service-id') === serviceId) {
+                            button.disabled = false; // 버튼을 활성화합니다.
+                            button.classList.add('clicked'); // 클릭 상태 클래스를 추가합니다.
+                        }
+                    });
+                    for (const [serviceId, fileList] of Object.entries(data)) {
+                        // 이제 fileList는 해당 serviceId의 파일 배열입니다
+                        // 이 fileList를 UI를 업데이트하는 함수에 전달할 수 있습니다
+                        updateFileListForService(serviceId, fileList);
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    // 오류가 발생하면 버튼을 다시 활성화하고 클릭 상태를 복구합니다.
+                    serviceButtons.forEach(function(button) {
+                        if (button.getAttribute('data-service-id') === serviceId) {
+                            button.disabled = false; // 버튼을 활성화합니다.
+                            button.classList.add('clicked'); // 클릭 상태 클래스를 추가합니다.
+                        }
+                    });
+                });
+            }
+        } else {
+            console.error('CSRF 메타 태그를 찾을 수 없습니다.');
+        }
+    }, { once: true });
+} else {
+    console.error('필요한 HTML 요소를 찾을 수 없습니다.');
+}
+
+function updateFileListForService(serviceId, fileList) {
+    // 서비스 ID에 해당하는 div를 찾습니다.
+    const serviceFilesContainer = document.querySelector(`div[data-service-name="${serviceId}"]`);
+
+    if (serviceFilesContainer) {
+        // 기존 파일 목록을 지웁니다.
+        serviceFilesContainer.innerHTML = '';
+
+        // 새 파일 목록을 추가합니다.
+        fileList.forEach(file => {
+            const ul = document.createElement('ul');
+            ul.innerHTML = `
+                <li><input type="checkbox"></li>
+                <li><img src="img/txt-file.png" alt="txt-file" class="txt-file"><span>${file.name}</span></li>
+                <li><span>${file.size}</span></li>
+                <li><span>${file.contentType}</span></li>
+                <li><span>${new Date(file.uploadTime).toLocaleDateString('ko-KR')}</span></li>
+            `;
+            serviceFilesContainer.appendChild(ul);
+        });
+    } else {
+        console.error(`서비스 ID에 해당하는 컨테이너를 찾을 수 없습니다: ${serviceId}`);
+    }
 }
 
 var uploadProfileElement = document.getElementById("uploadProfile");
@@ -355,21 +472,37 @@ document.addEventListener('input', function(e) {
     }
 });
 
-var selectedFiles = [];  // 현재 선택된 파일을 저장하는 배열
+var selectedFiles = [];
 
-document.getElementById('fileInput').addEventListener('change', function () {
-    var fileList = document.getElementById('fileList');
-    var files = this.files;
+document.addEventListener('DOMContentLoaded', function () {
+    // DOM이 완전히 로드된 후에 이벤트 리스너를 등록합니다.
+    var fileInputElement = document.getElementById('fileInput');
 
-    for (var i = 0; i < files.length; i++) {
-        var file = files[i];
-        selectedFiles.push(file);  // 파일을 selectedFiles 배열에 추가
+    if (fileInputElement) {
+        fileInputElement.addEventListener('change', function () {
+            var fileListElement = document.getElementById('fileList');
 
-        var listItem = document.createElement('li');
-        listItem.setAttribute('data-fileindex', selectedFiles.length - 1);  // 파일 인덱스 저장
-        listItem.innerHTML = '<img src="/img/txt-file.png" alt="txt-file" class="txt-file">' + file.name +
-        '<span><img src="/img/close_icon.png" alt="close-icon" class="close-icon" onclick="removeFile(this)"></span>';
-        fileList.appendChild(listItem);
+            // 'fileList' 요소가 있는지 확인합니다.
+            if (!fileListElement) {
+                console.error('Element with ID "fileList" not found.');
+                return;
+            }
+
+            var files = this.files;
+
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                selectedFiles.push(file); // 파일을 selectedFiles 배열에 추가
+
+                var listItem = document.createElement('li');
+                listItem.setAttribute('data-fileindex', selectedFiles.length - 1); // 파일 인덱스 저장
+                listItem.innerHTML = '<img src="/img/txt-file.png" alt="txt-file" class="txt-file">' + file.name +
+                '<span><img src="/img/close_icon.png" alt="close-icon" class="close-icon" onclick="removeFile(this)"></span>';
+                fileListElement.appendChild(listItem);
+            }
+        });
+    } else {
+        console.error('Element with ID "fileInput" not found.');
     }
 });
 

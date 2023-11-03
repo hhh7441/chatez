@@ -1,7 +1,6 @@
 package aix.project.chatez.member;
 
 import org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
-import org.opensearch.action.delete.DeleteRequest;
 import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.client.RequestOptions;
@@ -193,14 +192,14 @@ public class ChatEzService {
                     amazonS3.deleteObject(bucket, imagePath);
                 }
 
-//                try (RestHighLevelClient client = OpenSearchClient.createClient()) {
-//                    // 인덱스 삭제
-//                    DeleteIndexRequest deleteIndexRequest = new DeleteIndexRequest(myService.getServiceId());
-//                    client.indices().delete(deleteIndexRequest, RequestOptions.DEFAULT);
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                    // 여기에서 오류 처리를 수행합니다.
-//                }
+                try (RestHighLevelClient client = OpenSearchClient.createClient()) {
+                    // 인덱스 삭제
+                    DeleteIndexRequest deleteIndexRequest = new DeleteIndexRequest(myService.getServiceId());
+                    client.indices().delete(deleteIndexRequest, RequestOptions.DEFAULT);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    // 여기에서 오류 처리를 수행합니다.
+                }
 
                 myServiceRepository.deleteById(no);
 
@@ -226,7 +225,7 @@ public class ChatEzService {
         }
     }
 
-    public void awsFileData(Model model) {
+    public Map<String, List<Map<String, Object>>> awsFileData() {
         RestHighLevelClient client = OpenSearchClient.createClient();
         List<Member> loginUser = this.memberRepository.findAll();
 
@@ -277,7 +276,8 @@ public class ChatEzService {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            model.addAttribute("servicesFiles", servicesFilesMap);  // 서비스 이름에 따른 파일 정보 맵을 Model에 추가합니다.
+            return servicesFilesMap;  // 서비스 이름에 따른 파일 정보 맵을 Model에 추가합니다.
         }
+        return null;
     }
 }

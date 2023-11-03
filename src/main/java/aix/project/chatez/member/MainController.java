@@ -1,6 +1,13 @@
 package aix.project.chatez.member;
 
 import org.apache.http.entity.ContentType;
+import org.opensearch.action.index.IndexRequest;
+import org.opensearch.action.index.IndexResponse;
+import org.opensearch.client.RequestOptions;
+import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.common.xcontent.XContentType;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -9,12 +16,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import javax.annotation.PreDestroy;
@@ -54,11 +61,61 @@ public class MainController {
     }
 
     private Path saveTempFile(MultipartFile file) throws IOException {
+        // 원본 파일 이름을 얻습니다.
         String originalFilename = file.getOriginalFilename();
-        String fileExtension = originalFilename != null ? originalFilename.substring(originalFilename.lastIndexOf(".")) : ".tmp";
-        Path tempFile = Files.createTempFile("upload", fileExtension);
-        file.transferTo(tempFile.toFile());
+
+        // null 체크 후 임시 디렉토리에 저장할 파일 경로를 생성합니다.
+        // 파일 이름이 중복되지 않는 환경이라고 가정합니다.
+        Path tempFile = null;
+        if (originalFilename != null) {
+            tempFile = Files.createTempDirectory("uploads").resolve(originalFilename);
+        }
+        // MultipartFile의 내용을 임시 파일에 복사합니다.
+        if (tempFile != null) {
+            file.transferTo(tempFile.toFile());
+        }
+
         return tempFile;
+    }
+
+    @PostMapping("/fileUpdate")
+    public ResponseEntity<?> handleMultipleFileUpload(
+            @RequestParam("files") List<MultipartFile> files,
+            @RequestParam("serviceId") String serviceId) {
+        for (MultipartFile file : files) {
+            try {
+                String fileContent = new String(file.getBytes(), StandardCharsets.UTF_8);
+                String[] sentences = fileContent.split("\\.");
+
+                try (RestHighLevelClient client = OpenSearchClient.createClient()) {
+                    for (String sentence : sentences) {
+                        Map<String, Object> sentenceDocument = new HashMap<>();
+                        sentenceDocument.put("size", file.getSize());
+                        sentenceDocument.put("contents", sentence.trim());
+                        sentenceDocument.put("name", file.getOriginalFilename());
+                        sentenceDocument.put("contentType", file.getContentType());
+                        sentenceDocument.put("uploadTime", System.currentTimeMillis());
+                        System.out.println("serviceId : "+serviceId);
+                        IndexRequest indexRequest = new IndexRequest(serviceId);
+                        indexRequest.source(sentenceDocument, XContentType.JSON);
+                        client.index(indexRequest, RequestOptions.DEFAULT);
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                // JSON 형태의 에러 메시지 반환
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("{\"error\": \"Failed to process file " + file.getOriginalFilename() + "\"}");
+            }
+        }
+        try {
+            Map<String, List<Map<String, Object>>> servicesFilesMap = chatEzService.awsFileData();
+            return ResponseEntity.ok(servicesFilesMap); // Map을 JSON으로 변환하여 응답
+        } catch (Exception e) {
+            e.printStackTrace();
+            String errorMessage = String.format("서비스 ID '%s'에 대한 파일 처리 실패", serviceId);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.singletonMap("error", errorMessage));
+        }
     }
 
     @ResponseBody
@@ -146,7 +203,8 @@ public class MainController {
     @GetMapping("/file_manager")
     public String file_manager(Model model) {
         chatEzService.userServiceDate(model);
-        chatEzService.awsFileData(model);
+        Map<String, List<Map<String, Object>>> servicesFilesMap = chatEzService.awsFileData();
+        model.addAttribute("servicesFiles", servicesFilesMap);
         model.addAttribute("bucket", s3Properties.getS3Bucket());
         model.addAttribute("folder",s3Properties.getS3UploadPath());
         return "service/file_manager";
